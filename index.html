@@ -1,199 +1,34 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<title>Car Wash System</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-:root{
-  --blue:#0a58ca;
-  --orange:#ff9800;
-  --bg:#f4f8ff;
-}
-body{
-  margin:0;font-family:sans-serif;background:var(--bg);
-}
-header{
-  background:var(--blue);
-  color:#fff;
-  padding:14px;
-  text-align:center;
-}
-.card{
-  background:#fff;
-  margin:12px;
-  padding:14px;
-  border-radius:12px;
-}
-input,select,button{
-  width:100%;
-  padding:10px;
-  margin-top:6px;
-  border-radius:8px;
-  border:1px solid #ccc;
-}
-button{
-  background:var(--orange);
-  color:#fff;
-  border:none;
-  font-size:16px;
-}
-.status{
-  padding:4px 8px;
-  border-radius:6px;
-  font-size:12px;
-}
-.received{background:#bbdefb}
-.washing{background:#ffe0b2}
-.done{background:#c8e6c9}
-.hidden{display:none}
-</style>
+  <!-- meta -->
+  <!-- style -->
 </head>
 
 <body>
 
-<header>
-  🚗 ระบบร้านล้างรถ
-  <div id="now"></div>
-</header>
-
 <!-- LOGIN -->
-<div class="card" id="loginBox">
-  <h3>🔐 Login</h3>
-  <input id="empId" placeholder="รหัสพนักงาน">
-  <input id="empName" placeholder="ชื่อ">
-  <select id="empRole">
-    <option value="staff">พนักงาน</option>
-    <option value="admin">แอดมิน</option>
-  </select>
-  <button onclick="login()">เข้าสู่ระบบ</button>
-</div>
+<div id="loginBox"></div>
 
-<!-- DASHBOARD -->
-<div id="mainBox" class="hidden">
+<!-- REGISTER -->
+<div id="registerBox" class="hidden"></div>
 
-<div class="card">
-  👤 <b id="empInfo"></b>
-  <button onclick="logout()">ออกจากระบบ</button>
-</div>
+<!-- ADMIN -->
+<div id="adminBox" class="hidden"></div>
 
-<div class="card">
-  <h3>➕ เพิ่มรถ</h3>
-  <input id="plate" placeholder="ทะเบียนรถ">
-  <select id="price">
-    <option value="149">149</option>
-    <option value="179">179</option>
-    <option value="199">199</option>
-  </select>
-  <select id="status">
-    <option value="received">รับรถ</option>
-    <option value="washing">กำลังล้าง</option>
-    <option value="done">ล้างเสร็จ</option>
-  </select>
-  <input id="customerName" placeholder="ชื่อลูกค้า (ไม่บังคับ)">
-  <input id="customerPhone" placeholder="เบอร์โทร (ไม่บังคับ)">
-  <button onclick="saveCar()">บันทึก</button>
-</div>
-
-<div class="card">
-  <h3>📋 รถวันนี้</h3>
-  <div id="carList"></div>
-</div>
-
-<div class="card">
-  <h3>💰 สรุปรายวัน</h3>
-  <div id="summary"></div>
-</div>
-
-</div>
+<!-- STAFF -->
+<div id="staffBox" class="hidden"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+  // firebase config
+  // auth
+  // firestore
 
-const firebaseConfig = {
- apiKey: "AIzaSyAT8iFkfilH_4z_Jpmrb9pyrZ0WFdwzt0s",
- authDomain: "carwash-system-d2966.firebaseapp.com",
- projectId: "carwash-system-d2966",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const STORE_KEEP=40, COIN_COST=30;
-
-function updateTime(){
- const now=new Date();
- document.getElementById("now").innerText=
-  now.toLocaleDateString("th-TH")+" "+
-  now.toLocaleTimeString("th-TH");
-}
-setInterval(updateTime,1000); updateTime();
-
-window.login=()=>{
- const emp={
-  id:empId.value,
-  name:empName.value,
-  role:empRole.value
- };
- localStorage.setItem("emp",JSON.stringify(emp));
- init();
-};
-
-window.logout=()=>{
- localStorage.clear();
- location.reload();
-};
-
-function init(){
- const emp=JSON.parse(localStorage.getItem("emp"));
- if(!emp) return;
- loginBox.classList.add("hidden");
- mainBox.classList.remove("hidden");
- empInfo.innerText=`${emp.name} (${emp.id}) - ${emp.role}`;
- loadToday();
-}
-init();
-
-window.saveCar=async()=>{
- const emp=JSON.parse(localStorage.getItem("emp"));
- const now=new Date();
- const dateISO=now.toISOString().slice(0,10);
-
- await addDoc(collection(db,"cars"),{
-  plate:plate.value,
-  price:+price.value,
-  status:status.value,
-  customerName:customerName.value,
-  customerPhone:customerPhone.value,
-  empId:emp.id,
-  empName:emp.name,
-  role:emp.role,
-  dateISO,
-  createdAt:serverTimestamp()
- });
- alert("บันทึกแล้ว");
-};
-
-function loadToday(){
- const today=new Date().toISOString().slice(0,10);
- const q=query(collection(db,"cars"),where("dateISO","==",today));
- onSnapshot(q,snap=>{
-  let total=0;
-  carList.innerHTML="";
-  snap.forEach(d=>{
-   const c=d.data();
-   const net=c.price-STORE_KEEP-COIN_COST;
-   total+=net;
-   carList.innerHTML+=`
-    🚗 ${c.plate}
-    <span class="status ${c.status}">${c.status}</span>
-    - ${c.empName} (${net}฿)<br>
-   `;
-  });
-  summary.innerText=`รวมวันนี้: ${total} บาท`;
- });
-}
+  // register()
+  // login()
+  // approveEmployee()
+  // saveCar()
+  // loadToday()
 </script>
 
 </body>
